@@ -1,4 +1,4 @@
-#version 330
+#version 120
 
 struct PointLight {
     vec3 position;
@@ -7,13 +7,9 @@ struct PointLight {
     int type;
 };
 
-out vec4 FragColor;
-
-in VS_OUT {
-    vec3 FragPos;
-    vec3 Normal;
-    vec2 TexCoords;
-} fs_in;
+varying vec3 vFragPos;
+varying vec3 vNormal;
+varying vec2 vTexCoords;
 
 uniform sampler2D Texture;
 uniform PointLight pointLights[3];
@@ -27,20 +23,19 @@ uniform float diffuseIntensity = 0.4;
 uniform float specular_th = 0.3;
 uniform float diffuse_th = 0.5;
 
-
-void main (void)
+void main(void)
 {
 	// Texture color
-	vec3 color = texture(Texture, fs_in.TexCoords).rgb;
-	float transp = texture(Texture, fs_in.TexCoords).a;
+	vec3 color = texture2D(Texture, vTexCoords).rgb;
+	float transp = texture2D(Texture, vTexCoords).a;
 
 	// Silhouette Color:
 	vec3 silhouetteColor = vec3(0.0, 0.0, 0.0);
 
-	vec3 Normal = normalize(fs_in.Normal);
-	vec3 viewDir = normalize(viewPos-fs_in.FragPos);
-        vec3 diffuse = vec3(0.0, 0.0, 0.0);
-        vec3 specular = vec3(0.0, 0.0, 0.0);
+	vec3 Normal = normalize(vNormal);
+	vec3 viewDir = normalize(viewPos - vFragPos);
+    vec3 diffuse = vec3(0.0, 0.0, 0.0);
+    vec3 specular = vec3(0.0, 0.0, 0.0);
 
 	vec3 ambient = ambientLight[3] * color * vec3(ambientLight);
 
@@ -48,7 +43,7 @@ void main (void)
 		if (pointLights[i].intensity > 0.01) {
 
 			vec3 lightPos = pointLights[i].position;
-			vec3 LightVert = normalize(lightPos - fs_in.FragPos);
+			vec3 LightVert = normalize(lightPos - vFragPos);
 			vec3 EyeLight = normalize(LightVert + viewDir);
 
 			// Simple Silhouette
@@ -56,7 +51,7 @@ void main (void)
 			if (sil >= silhouetteThreshold) {
 				float diff = 0.0;
 				if (pointLights[i].type == 0) {
-					float l = length(lightPos - fs_in.FragPos) / pointLights[i].intensity;
+					float l = length(lightPos - vFragPos) / pointLights[i].intensity;
 					diff = max(dot(Normal, LightVert), 0.0) / l;
                         	} else {
                                 	vec3 L = normalize(lightPos);
@@ -65,7 +60,7 @@ void main (void)
 
 				// Diffuse part
 				diff = diffuseIntensity * smoothstep(diffuse_th-0.01, diffuse_th, diff);
-				diffuse += diff * pointLights[i].color  * pointLights[i].intensity * color;
+				diffuse += diff * pointLights[i].color * pointLights[i].intensity * color;
 
 				// Specular part
 				float spec = pow(max(dot(Normal, EyeLight), 0.0), shininess);
@@ -74,6 +69,6 @@ void main (void)
 			}
 		}
 	}
-	FragColor = vec4(ambient + diffuse + specular, transp);
+	gl_FragColor = vec4(ambient + diffuse + specular, transp);
 }
 

@@ -9,7 +9,7 @@
 import numpy as np
 from PySide6.QtGui import QVector3D
 from obj3d.bone import cBone, boneWeights
-import core.math as mquat
+import core.core_math as mquat
 
 class skeleton:
     def __init__(self, glob, name):

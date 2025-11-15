@@ -1,25 +1,22 @@
-#version 330
+#version 120
 
-layout (location = 0) in vec4 aPos;
-layout (location = 1) in vec4 aNormal;
-layout (location = 2) in vec2 aTexCoords;
+attribute vec4 aPos;
+attribute vec4 aNormal;
+attribute vec2 aTexCoords;
 
 uniform mat4 uMvpMatrix;
 uniform mat4 uModelMatrix;
 uniform mat4 uNormalMatrix;
 
-out VS_OUT {
-    vec3 FragPos;
-    vec3 Normal;
-    vec2 TexCoords;
-} vs_out;
+varying vec3 vFragPos;
+varying vec3 vNormal;
+varying vec2 vTexCoords;
 
 void main()
 {
-        vs_out.FragPos = vec3(uModelMatrix * aPos);
-	vs_out.Normal = normalize(vec3(uNormalMatrix * aNormal));
-	vs_out.TexCoords = aTexCoords;
-	gl_Position = uMvpMatrix *  aPos;
-
+    vFragPos = vec3(uModelMatrix * aPos);
+    vNormal = normalize(vec3(uNormalMatrix * aNormal));
+    vTexCoords = aTexCoords;
+    gl_Position = uMvpMatrix * aPos;
 }
 

@@ -10,7 +10,7 @@
     * PosePrims
 """
 import numpy as np
-import core.math as mquat
+import core.core_math as mquat
 import math
 
 class BVHJoint():
@@ -288,7 +288,10 @@ class BVH():
             m = np.round(joint.matrixPoses[num], decimals=3)
             if not np.array_equiv(m,restmatrix):
                 s = list(m[:3,:3].flatten())
-                if np.where(~m.any(axis=0))[0] == 3:
+                # find columns that are entirely zero; if 3 columns are zeros
+                # we only print rotation part, otherwise include translation
+                zeros = np.where(~m.any(axis=0))[0]
+                if zeros.size == 3:
                     print("\"" + joint.name + "\": " + str(s))
                 else:
                     d = list(m[:3,3].flatten())

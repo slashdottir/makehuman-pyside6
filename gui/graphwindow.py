@@ -15,7 +15,7 @@ from PySide6.QtGui import QVector3D, QColor, QIcon, QKeySequence
 from core.baseobj import baseClass
 from gui.common import IconButton
 from gui.slider import SimpleSlider
-from opengl.main import OpenGLView
+from opengl.main_openglview import OpenGLView
 import os
 
 class NavigationEvent(QObject):

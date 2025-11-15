@@ -1,4 +1,4 @@
-#version 330
+#version 120
 
 struct PointLight {
     vec3 position;
@@ -7,13 +7,9 @@ struct PointLight {
     int type;
 };
 
-out vec4 FragColor;
-
-in VS_OUT {
-    vec3 FragPos;
-    vec3 Normal;
-    vec2 TexCoords;
-} fs_in;
+varying vec3 vFragPos;
+varying vec3 vNormal;
+varying vec2 vTexCoords;
 
 uniform sampler2D Texture;
 uniform sampler2D AOTexture;
@@ -27,31 +23,31 @@ uniform float AOMult;
 
 void main()
 {
-	vec3 color = texture(Texture, fs_in.TexCoords).rgb;
-	float transp = texture(Texture, fs_in.TexCoords).a;
+	vec3 color = texture2D(Texture, vTexCoords).rgb;
+	float transp = texture2D(Texture, vTexCoords).a;
 	if (transp < 0.01) discard;
 
-        float ao = texture(AOTexture, fs_in.TexCoords).r;
+    float ao = texture2D(AOTexture, vTexCoords).r;
 
 	// ambient
 	vec3 ambient = ambientLight[3] * color * vec3(ambientLight);
 
 	// diffuse
-	vec3 normal = normalize(fs_in.Normal);
-        vec3 diffuse = vec3(0.0, 0.0, 0.0);
-        vec3 specular = vec3(0.0, 0.0, 0.0);
-	vec3 viewDir = normalize(viewPos - fs_in.FragPos);
-        vec3 specw = vec3(lightWeight[0]);
+	vec3 normal = normalize(vNormal);
+    vec3 diffuse = vec3(0.0, 0.0, 0.0);
+    vec3 specular = vec3(0.0, 0.0, 0.0);
+	vec3 viewDir = normalize(viewPos - vFragPos);
+    vec3 specw = vec3(lightWeight[0]);
 
-        for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
 		if (pointLights[i].intensity > 0.01) {
                 	// diffuse
                 	vec3 position = pointLights[i].position;
 			vec3 L = vec3(0.0);
 			float diff = 0.0;
-                	float l = length(position - fs_in.FragPos) / pointLights[i].intensity;
+                	float l = length(position - vFragPos) / pointLights[i].intensity;
 			if (pointLights[i].type == 0) {
-                		L = normalize(position - fs_in.FragPos);
+                		L = normalize(position - vFragPos);
                 		diff = max(dot(L, normal), 0.0) /l;
 			} else {
                 		L = normalize(position);
@@ -70,8 +66,8 @@ void main()
                 	}
                 	specular += specw * pointLights[i].color * spec;
 		}
-        }
+    }
 
-	FragColor = vec4((ambient + diffuse + specular) * ao * AOMult, transp);
+	gl_FragColor = vec4((ambient + diffuse + specular) * ao * AOMult, transp);
 }
 

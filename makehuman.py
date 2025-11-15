@@ -10,7 +10,7 @@ from time import sleep
 
 from PySide6.QtWidgets import QApplication
 
-from PySide6.QtCore import QEventLoop
+from PySide6.QtCore import QEventLoop, QTimer
 
 from core.globenv import programInfo, globalObjects
 from gui.mainwindow import  MHMainWindow
@@ -126,10 +126,20 @@ def main():
     mainwin.show()
     mainwin.move(app.topLeftCentered(mainwin))
     loading.close()
-    #
-    # all we need from openGL is now existent (get initial values)
-    #
-    mainwin.initParams()
+    # all we need from OpenGL (camera/light/etc.) becomes available
+    # only after the OpenGLView has run initializeGL(). Prefer to run
+    # initParams exactly when the view signals readiness. If the view
+    # exposes the `initialized` signal, connect it; otherwise fall back
+    # to posting a single-shot timer which runs after the event loop
+    # starts.
+    view = getattr(glob, 'openGLWindow', None)
+    if view is not None and hasattr(view, 'initialized'):
+        try:
+            view.initialized.connect(mainwin.initParams)
+        except Exception:
+            QTimer.singleShot(0, mainwin.initParams)
+    else:
+        QTimer.singleShot(0, mainwin.initParams)
     app.exec()
     
 

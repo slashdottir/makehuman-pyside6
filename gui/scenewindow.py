@@ -28,13 +28,38 @@ class MHSceneWindow(QWidget):
         self.parent = parent
         self.env = parent.env
         self.glob = parent.glob
-        self.view = self.glob.openGLWindow 
-        self.scene = self.view.scene
-        self.light = self.view.light
+        self.view = self.glob.openGLWindow
+
+        # If OpenGL view hasn't finished initializeGL yet, defer building
+        # the UI because it accesses view.scene and view.light.
+        self.scene = getattr(self.view, 'scene', None)
+        self.light = getattr(self.view, 'light', None)
+        if self.light is None:
+            # connect to view's initialized signal and return; build_ui will
+            # be called once the GL view is ready
+            try:
+                self.view.initialized.connect(self._on_view_initialized)
+            except Exception:
+                # if view doesn't expose the signal for any reason, just
+                # attempt to build UI (it may still fail and will raise)
+                self.build_ui()
+            return
+        # otherwise build immediately
+        self.build_ui()
+
+    def _on_view_initialized(self):
+        # called when the OpenGLView finished initializeGL
+        self.view = self.glob.openGLWindow
+        self.scene = getattr(self.view, 'scene', None)
+        self.light = getattr(self.view, 'light', None)
+        self.build_ui()
+
+    def build_ui(self):
+        # now safe to access self.light and self.scene
         y1 = self.light.min_coords[1]
         y2 = self.light.max_coords[1]
         self.setWindowTitle("Scene and Lighting")
-        self._volume = 100.0 / (np.array(self.light.max_coords) - np.array(self.light.min_coords))
+        self._volume = 100.0 / (np.array(self.light.max_coords) - np.array(self.light.max_coords))
 
         self._lastusedskybox = self.light.skyboxname
         self._lastselectedskybox = self.light.skyboxname

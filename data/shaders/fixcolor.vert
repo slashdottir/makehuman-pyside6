@@ -1,21 +1,18 @@
-#version 330
+#version 120
 
-
-layout (location = 0) in vec4 aPos;
-layout (location = 1) in vec3 col;
+attribute vec4 aPos;
+attribute vec3 col;
 
 uniform mat4 uMvpMatrix;
 uniform mat4 uModelMatrix;
 
-out VS_OUT {
-    vec3 FragPos;
-    vec3 Color;
-} vs_out;
+varying vec3 vFragPos;
+varying vec3 vColor;
 
 void main()
 {
 	gl_Position = uMvpMatrix * aPos;
-	vs_out.FragPos = vec3(uModelMatrix * aPos);
-	vs_out.Color = col;
+	vFragPos = vec3(uModelMatrix * aPos);
+	vColor = col;
 }
 

@@ -8,7 +8,7 @@
 
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtWidgets import QSizePolicy
-from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QMatrix4x4, QVector3D
 
 # try to keep only constants here
@@ -25,6 +25,9 @@ from opengl.prims import VisMarker
 from opengl.scene import Scene
 
 class OpenGLView(QOpenGLWidget):
+    # emitted when initializeGL finished and view is ready (shaders, scene, light, camera set)
+    initialized = Signal()
+
     def __init__(self, glob):
         self.glob = glob
         self.env = glob.env
@@ -145,6 +148,11 @@ class OpenGLView(QOpenGLWidget):
             self.Tweak()
 
     def toggleSkybox(self, status):
+        # avoid attribute errors when called before initializeGL ran
+        if getattr(self, 'light', None) is None:
+            # remember desired state and apply later
+            self._pending_skybox = status
+            return
         self.light.skybox = status
         self.Tweak()
 
@@ -245,6 +253,18 @@ class OpenGLView(QOpenGLWidget):
         self.camera = Camera(self.glob, o_size, self.width(), self.height())
         self.camera.resizeViewPort(self.width(), self.height())
 
+        # If some caller requested a custom view before GL init (e.g. user pressed
+        # a view button before initialization finished), apply it now.
+        if hasattr(self, '_pending_custom_view') and getattr(self, 'camera', None) is not None:
+            try:
+                # apply stored requested view
+                self.camera.customView(self._pending_custom_view)
+            finally:
+                try:
+                    delattr(self, '_pending_custom_view')
+                except Exception:
+                    pass
+
 
         if baseClass is not None:
             self.newMesh()
@@ -258,12 +278,34 @@ class OpenGLView(QOpenGLWidget):
         if self.skybox.create(self.light.skyboxname) is False:
             self.skybox = None
 
+        # if some caller set a skybox state before GL init, apply it now
+        if hasattr(self, '_pending_skybox') and getattr(self, 'light', None) is not None:
+            try:
+                self.light.skybox = self._pending_skybox
+            finally:
+                delattr(self, '_pending_skybox')
+
+        # notify listeners that GL initialization finished
+        try:
+            self.initialized.emit()
+        except Exception:
+            pass
+
+        print("HELLO: OpenGL initialized")
+
 
     def createThumbnail(self):
         image = self.grabFramebuffer()
         return (image.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
     def customView(self, direction):
+        # If initializeGL hasn't run yet the camera may be None. Store the
+        # requested view and apply it once initialization completes to avoid
+        # AttributeError when GUI buttons are pressed early.
+        if getattr(self, 'camera', None) is None:
+            self._pending_custom_view = direction
+            return
+
         #self.setCameraCenter()  # new calculation of size
         self.camera.customView(direction)
         self.paintGL()
@@ -301,6 +343,11 @@ class OpenGLView(QOpenGLWidget):
         self.update()
 
     def paintGL(self):
+        # If initializeGL hasn't finished, light/camera/scene may be unset.
+        # Avoid AttributeError by returning early until initialization completes.
+        if getattr(self, 'light', None) is None or getattr(self, 'camera', None) is None:
+            return
+
         c = self.light.glclearcolor
         self.glfunc.glClearColor(c.x(), c.y(), c.z(), c.w())
         self.glfunc.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
@@ -412,7 +459,8 @@ class OpenGLView(QOpenGLWidget):
 
     def cleanUp(self):
         self.env.logLine(1, "cleanup openGL")
-        self.scene.cleanUp()
+        if self.scene:
+            self.scene.cleanUp()
         if self.skybox is not None:
             self.skybox.delete()
             self.skybox = None

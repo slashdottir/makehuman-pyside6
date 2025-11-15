@@ -1,16 +1,12 @@
-#version 330
+#version 120
 
-in VS_OUT {
-    vec3 FragPos;
-    vec3 Color;
-} fs_in;
-
-out vec4 FragColor;
+varying vec3 vFragPos;
+varying vec3 vColor;
 
 const float transp = 0.4;
 
 void main()
 {
-	FragColor =  vec4(fs_in.Color, transp);
+	gl_FragColor = vec4(vColor, transp);
 }
 

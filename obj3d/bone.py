@@ -8,7 +8,7 @@
 """
 
 import numpy as np
-import core.math as mquat
+import core.core_math as mquat
 
 class cBone():
     def __init__(self, skel, name, parent, head, tail, localplane=0, reference=None, weights=None):
